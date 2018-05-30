@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ values.serviceName }}
+  labels:
+    run: {{ values.serviceName }}
+spec:
+  ports:
+  - port: {{ values.servicePort }}
+    protocol: TCP
+  selector:
+    run: {{ values.serviceName }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ values.serviceName }}
+  namespace: default
+data: 
+  ssh_key: |
+{{ values.sshKey |indent(4, True) }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ values.serviceName }}
+spec:
+  selector:
+    matchLabels:
+      run: {{ values.serviceName }}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: {{ values.serviceName }}
+    spec:
+      containers:
+      - name: {{ values.serviceName }}
+        image: gfleury/ssh-client
+        ports:
+        - containerPort: {{ values.servicePort }}
+        command: ["ssh"]
+        args:
+          - "-i"
+          - "/etc/sshkeys/ssh_key"
+          - "-o"
+          - "UserKnownHostsFile=/dev/null"
+          - "-o"
+          - "StrictHostKeyChecking=no"
+          - "-N"
+          - "-L"
+          - "0.0.0.0:{{ values.sshProxyParameter }}"
+          - "{{ values.sshUserHost }}"
+        volumeMounts:
+        - name: sshkey-volume
+          mountPath: /etc/sshkeys
+      volumes:
+        - name: sshkey-volume
+          configMap:
+            name: {{ values.serviceName }}
+            defaultMode: 256
+      restartPolicy: Always
