@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 from jinja2 import FileSystemLoader, Environment
 
